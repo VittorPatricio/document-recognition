@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.coffeeapp"
+    namespace "com.qrcode"
     defaultConfig {
-        applicationId "com.coffeeapp"
+        applicationId "com.qrcode"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -120,7 +120,7 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
-    apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+   
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

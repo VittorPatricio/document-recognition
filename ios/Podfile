@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'CoffeeApp' do
+target 'qrcode' do
   config = use_native_modules!
 
   use_react_native!(
@@ -23,7 +23,7 @@ target 'CoffeeApp' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'CoffeeAppTests' do
+  target 'qrcodeTests' do
     inherit! :complete
     # Pods for testing
   end
