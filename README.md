@@ -14,3 +14,7 @@ npm i
 
 npm start -- --reset-cache
 npx react-native run-android --verbose
+
+---
+
+cd android && ./gradlew assembleRelease && cd ..
