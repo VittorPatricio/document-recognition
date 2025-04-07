@@ -59,7 +59,7 @@ const SkiaFrameProcessorExample = () => {
 
     const resized = resize(frame, {
       dataType: 'uint8',
-      pixelFormat: 'bgr',
+      pixelFormat: 'rgba',
       scale: {
         height: height,
         width: width,
@@ -191,6 +191,7 @@ const SkiaFrameProcessorExample = () => {
         device={device}
         isActive={true}
         frameProcessor={frameProcessor}
+        pixelFormat='rgb'
       />
     </SafeAreaView>
   );
