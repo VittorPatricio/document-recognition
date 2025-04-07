@@ -13,11 +13,8 @@
     "@shopify/react-native-skia": "^1.12.3",
     "react": "18.3.1",
     "react-native": "^0.76.7",
-    "react-native-fast-opencv": "^0.4.4",
-    "react-native-reanimated": "^3.17.2",
     "react-native-vision-camera": "^4.6.4",
-    "react-native-worklets-core": "^1.5.0",
-    "vision-camera-resize-plugin": "^3.2.0"
+    "react-native-worklets-core": "^1.5.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
