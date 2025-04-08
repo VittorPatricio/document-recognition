@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   View,
   Text,
@@ -5,16 +6,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {StackNavigationProp} from '@react-navigation/stack';
 import type {RootStackParamList, DocumentType} from '../App';
 import {Canvas, Rect} from '@shopify/react-native-skia';
-import React from 'react';
 
 type DocumentSelectionScreenProps = {
-  navigation: NativeStackNavigationProp<
-    RootStackParamList,
-    'DocumentSelection'
-  >;
+  navigation: StackNavigationProp<RootStackParamList, 'DocumentSelection'>;
 };
 
 type DocumentOption = {
@@ -64,10 +61,12 @@ const DocumentSelectionScreen = ({
     width: number;
     height: number;
   }) => {
+    // Scale down the document for preview
     const SCALE_FACTOR = 0.7;
     const previewWidth = width * SCALE_FACTOR;
     const previewHeight = height * SCALE_FACTOR;
 
+    // Center the preview
     const x = (100 - previewWidth) / 2;
     const y = (100 - previewHeight) / 2;
 
