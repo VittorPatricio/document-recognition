@@ -225,9 +225,9 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
 
       {/* Botão Tirar Foto */}
       <TouchableOpacity
-        style={styles.captureButton}
+        style={styles.captureButtonLayer}
         onPress={takePhotoAndUpload}>
-        <Text style={styles.buttonText}>Tirar Foto</Text>
+        <View style={styles.captureButton} />
       </TouchableOpacity>
 
       {/* Botão Voltar */}
@@ -277,12 +277,23 @@ const styles = StyleSheet.create({
   },
   captureButton: {
     position: 'absolute',
-    bottom: 75,
+    bottom: -5,
     alignSelf: 'center',
-    backgroundColor: '#4682B4',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+    backgroundColor: '#fefefe',
+    width: 100,
+    height: 100,
     borderRadius: 50,
+    zIndex: 2,
+  },
+  captureButtonLayer: {
+    position: 'absolute',
+    bottom: 65,
+    alignSelf: 'center',
+    backgroundColor: '#f2f2f2',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    zIndex: 1,
   },
   buttonText: {color: '#fff', fontWeight: 'bold'},
   backButton: {
