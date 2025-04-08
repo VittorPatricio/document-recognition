@@ -101,7 +101,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
 
     // Calculate position to center the rectangle
     const x = (screenWidth - rectWidth) / 2;
-    const y = (screenHeight - rectHeight) / 2;
+    const y = (screenHeight - rectHeight) / 2.35;
 
     const cornerSize = 20;
 
