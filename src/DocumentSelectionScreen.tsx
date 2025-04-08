@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   View,
   Text,
@@ -6,12 +5,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import type {StackNavigationProp} from '@react-navigation/stack';
-import type {RootStackParamList, DocumentType} from '../App';
 import {Canvas, Rect} from '@shopify/react-native-skia';
+import type {DocumentType} from '../App';
+import React from 'react';
 
 type DocumentSelectionScreenProps = {
-  navigation: StackNavigationProp<RootStackParamList, 'DocumentSelection'>;
+  onSelectDocument: (documentType: DocumentType) => void;
 };
 
 type DocumentOption = {
@@ -23,7 +22,7 @@ type DocumentOption = {
 };
 
 const DocumentSelectionScreen = ({
-  navigation,
+  onSelectDocument,
 }: DocumentSelectionScreenProps) => {
   const documentOptions: DocumentOption[] = [
     {
@@ -49,10 +48,6 @@ const DocumentSelectionScreen = ({
       height: 60,
     },
   ];
-
-  const handleSelectDocument = (documentType: DocumentType) => {
-    navigation.navigate('Camera', {documentType});
-  };
 
   const DocumentPreview = ({
     width,
@@ -100,7 +95,7 @@ const DocumentSelectionScreen = ({
           <TouchableOpacity
             key={option.type}
             style={styles.optionCard}
-            onPress={() => handleSelectDocument(option.type)}>
+            onPress={() => onSelectDocument(option.type)}>
             <DocumentPreview width={option.width} height={option.height} />
             <Text style={styles.optionTitle}>{option.title}</Text>
             <Text style={styles.optionDimensions}>{option.dimensions}</Text>

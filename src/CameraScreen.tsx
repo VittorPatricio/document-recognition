@@ -1,5 +1,6 @@
 'use client';
 
+import {useEffect} from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -9,25 +10,21 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {useEffect} from 'react';
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
 } from 'react-native-vision-camera';
 import {Canvas, Rect} from '@shopify/react-native-skia';
-import type {RouteProp} from '@react-navigation/native';
-import type {StackNavigationProp} from '@react-navigation/stack';
-import type {RootStackParamList} from '../App';
+import type {DocumentType} from '../App';
 import React from 'react';
 
 type CameraScreenProps = {
-  route: RouteProp<RootStackParamList, 'Camera'>;
-  navigation: StackNavigationProp<RootStackParamList, 'Camera'>;
+  documentType: DocumentType;
+  onBack: () => void;
 };
 
-const CameraScreen = ({route, navigation}: CameraScreenProps) => {
-  const {documentType} = route.params;
+const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
 
@@ -192,9 +189,7 @@ const CameraScreen = ({route, navigation}: CameraScreenProps) => {
       <DocumentFrame />
 
       {/* Back button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={styles.backButton} onPress={onBack}>
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
 
