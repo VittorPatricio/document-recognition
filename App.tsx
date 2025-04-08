@@ -1,7 +1,7 @@
 'use client';
 
 import {useState} from 'react';
-import {SafeAreaView, StyleSheet} from 'react-native';
+import {SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import DocumentSelectionScreen from './src/DocumentSelectionScreen';
 import CameraScreen from './src/CameraScreen';
 import React from 'react';
@@ -28,6 +28,11 @@ const App = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle={'dark-content'}
+        translucent={true}
+        backgroundColor={'transparent'}
+      />
       {currentScreen === 'selection' ? (
         <DocumentSelectionScreen onSelectDocument={navigateToCamera} />
       ) : (

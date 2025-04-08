@@ -180,11 +180,6 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
 
   return (
     <SafeAreaView style={{flex: 1}}>
-      <StatusBar
-        barStyle={'light-content'}
-        translucent={true}
-        backgroundColor={'transparent'}
-      />
       <Camera style={StyleSheet.absoluteFill} device={device} isActive={true} />
       <DocumentFrame />
 
@@ -226,11 +221,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    textAlign: 'center',
   },
   backButtonText: {
     color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   documentTypeContainer: {
     position: 'absolute',
