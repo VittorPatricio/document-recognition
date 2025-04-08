@@ -1,6 +1,4 @@
-'use client';
-
-import {useEffect} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -9,15 +7,17 @@ import {
   Dimensions,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
+  PhotoFile,
 } from 'react-native-vision-camera';
 import {Canvas, Rect} from '@shopify/react-native-skia';
 import type {DocumentType} from '../App';
-import React from 'react';
 
 type CameraScreenProps = {
   documentType: DocumentType;
@@ -27,163 +27,210 @@ type CameraScreenProps = {
 const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
+  const cameraRef = useRef<Camera>(null);
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [apiResponse, setApiResponse] = useState<any>(null);
+
+  // 1) Solicita permissão assim que o componente monta
   useEffect(() => {
-    requestPermission();
-  }, []);
+    (async () => {
+      await requestPermission();
+    })();
+  }, [requestPermission]);
 
-  if (!hasPermission)
+  if (hasPermission === false) {
     return (
-      <SafeAreaView
-        style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <Text>No Permission</Text>
+      <SafeAreaView style={styles.centered}>
+        <Text>Precisamos de permissão para usar a câmera</Text>
       </SafeAreaView>
     );
-  if (!device)
+  }
+  if (!device) {
     return (
-      <SafeAreaView
-        style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <Text>No Device</Text>
+      <SafeAreaView style={styles.centered}>
+        <Text>Dispositivo de câmera não encontrado.</Text>
       </SafeAreaView>
     );
+  }
 
+  // 2) Frame de auxílio via Skia
   const DocumentFrame = () => {
-    // Get screen dimensions
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
-
-    // Document dimensions in mm
-    let documentWidth: number;
-    let documentHeight: number;
-
+    let w, h;
     switch (documentType) {
       case 'A4':
-        documentWidth = 210;
-        documentHeight = 297;
+        w = 210;
+        h = 297;
         break;
       case 'RG':
-        documentWidth = 65;
-        documentHeight = 90;
-        break;
       case 'CPF':
-        documentWidth = 65;
-        documentHeight = 90;
+        w = 65;
+        h = 90;
         break;
       case 'CNH':
-        documentWidth = 55;
-        documentHeight = 75;
+        w = 55;
+        h = 75;
         break;
       default:
-        documentWidth = 210;
-        documentHeight = 297;
+        w = 210;
+        h = 297;
     }
-
-    // Calculate aspect ratio
-    const documentRatio = documentWidth / documentHeight;
-
-    // Calculate the maximum size that fits on screen with margins
-    const MARGIN = 40; // Margin from screen edges
-    const availableWidth = screenWidth - MARGIN * 2;
-    const availableHeight = screenHeight - MARGIN * 2;
-
-    // Determine if width or height is the limiting factor
-    let rectWidth, rectHeight;
-
-    if (availableWidth / availableHeight < documentRatio) {
-      // Width is the limiting factor
-      rectWidth = availableWidth;
-      rectHeight = rectWidth / documentRatio;
+    const ratio = w / h;
+    const M = 40;
+    const availW = screenWidth - M * 2;
+    const availH = screenHeight - M * 2;
+    let rectW, rectH;
+    if (availW / availH < ratio) {
+      rectW = availW;
+      rectH = rectW / ratio;
     } else {
-      // Height is the limiting factor
-      rectHeight = availableHeight;
-      rectWidth = rectHeight * documentRatio;
+      rectH = availH;
+      rectW = rectH * ratio;
     }
-
-    // Calculate position to center the rectangle
-    const x = (screenWidth - rectWidth) / 2;
-    const y = (screenHeight - rectHeight) / 2.35;
-
-    const cornerSize = 20;
+    const x = (screenWidth - rectW) / 2;
+    const y = (screenHeight - rectH) / 2.35;
+    const corner = 20;
 
     return (
       <Canvas style={styles.canvas}>
-        {/* Semi-transparent fill */}
         <Rect
           x={x}
           y={y}
-          width={rectWidth}
-          height={rectHeight}
-          color="rgba(176, 224, 230, 0.3)" // Lighter blue with transparency
+          width={rectW}
+          height={rectH}
+          color="rgba(176,224,230,0.3)"
         />
-        {/* Border */}
         <Rect
           x={x}
           y={y}
-          width={rectWidth}
-          height={rectHeight}
-          color="#4682B4" // Stronger blue
+          width={rectW}
+          height={rectH}
+          color="#4682B4"
           style="stroke"
           strokeWidth={3}
         />
-        {/* Corner markers for better visibility */}
-        {/* Top-left corner */}
-        <Rect x={x} y={y} width={cornerSize} height={3} color="#4682B4" />
-        <Rect x={x} y={y} width={3} height={cornerSize} color="#4682B4" />
-        {/* Top-right corner */}
+        {/* marcadores de canto */}
+        {/* TL */}
+        <Rect x={x} y={y} width={corner} height={3} color="#4682B4" />
+        <Rect x={x} y={y} width={3} height={corner} color="#4682B4" />
+        {/* TR */}
         <Rect
-          x={x + rectWidth - cornerSize}
+          x={x + rectW - corner}
           y={y}
-          width={cornerSize}
+          width={corner}
           height={3}
           color="#4682B4"
         />
         <Rect
-          x={x + rectWidth - 3}
+          x={x + rectW - 3}
           y={y}
           width={3}
-          height={cornerSize}
+          height={corner}
           color="#4682B4"
         />
-        {/* Bottom-left corner */}
+        {/* BL */}
         <Rect
           x={x}
-          y={y + rectHeight - 3}
-          width={cornerSize}
+          y={y + rectH - 3}
+          width={corner}
           height={3}
           color="#4682B4"
         />
         <Rect
           x={x}
-          y={y + rectHeight - cornerSize}
+          y={y + rectH - corner}
           width={3}
-          height={cornerSize}
+          height={corner}
           color="#4682B4"
         />
-        {/* Bottom-right corner */}
+        {/* BR */}
         <Rect
-          x={x + rectWidth - cornerSize}
-          y={y + rectHeight - 3}
-          width={cornerSize}
+          x={x + rectW - corner}
+          y={y + rectH - 3}
+          width={corner}
           height={3}
           color="#4682B4"
         />
         <Rect
-          x={x + rectWidth - 3}
-          y={y + rectHeight - cornerSize}
+          x={x + rectW - 3}
+          y={y + rectH - corner}
           width={3}
-          height={cornerSize}
+          height={corner}
           color="#4682B4"
         />
       </Canvas>
     );
   };
 
+  // 3) Captura e envio
+  const takePhotoAndUpload = async () => {
+    if (!cameraRef.current) return;
+    try {
+      // captura
+      const photo: PhotoFile = await cameraRef.current.takePhoto({
+        flash: 'off',
+      });
+      setPhotoUri(photo.path);
+
+      // prepara FormData
+      const formData = new FormData();
+      formData.append('documentType', documentType);
+      formData.append('file', {
+        uri: photo.path,
+        type: 'image/jpeg',
+        name: 'document.jpg',
+      } as any);
+
+      setIsLoading(true);
+      const resp = await fetch(
+        'https://workflow.wpp.accesys.com.br/webhook-test/documento/analise',
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'multipart/form-data'},
+          body: formData,
+        },
+      );
+      const json = await resp.json();
+      setApiResponse(json);
+    } catch (err) {
+      console.error('Erro ao tirar/upload foto:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <SafeAreaView style={{flex: 1}}>
-      <Camera style={StyleSheet.absoluteFill} device={device} isActive={true} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar hidden />
+      <Camera
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive
+        photo
+      />
       <DocumentFrame />
 
-      {/* Back button */}
+      {photoUri && (
+        <Image source={{uri: photoUri}} style={styles.previewImage} />
+      )}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
+
+      {/* Botão Tirar Foto */}
+      <TouchableOpacity
+        style={styles.captureButton}
+        onPress={takePhotoAndUpload}>
+        <Text style={styles.buttonText}>Tirar Foto</Text>
+      </TouchableOpacity>
+
+      {/* Botão Voltar */}
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
@@ -200,17 +247,44 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
             : 'CNH'}
         </Text>
       </View>
+
+      {/* (Opcional) Mostrar resposta da API */}
+      {apiResponse && (
+        <View style={styles.responseBox}>
+          <Text>Resposta da API:</Text>
+          <Text>{JSON.stringify(apiResponse)}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: {flex: 1},
+  centered: {flex: 1, justifyContent: 'center', alignItems: 'center'},
+  canvas: {flex: 1},
+  previewImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  canvas: {
-    flex: 1,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  captureButton: {
+    position: 'absolute',
+    bottom: 75,
+    alignSelf: 'center',
+    backgroundColor: '#4682B4',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 50,
+  },
+  buttonText: {color: '#fff', fontWeight: 'bold'},
   backButton: {
     position: 'absolute',
     top: 30,
@@ -230,6 +304,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
   },
+  responseBox: {
+    position: 'absolute',
+    bottom: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    padding: 10,
+    borderRadius: 8,
+  },
+
   documentTypeContainer: {
     position: 'absolute',
     top: 30,
