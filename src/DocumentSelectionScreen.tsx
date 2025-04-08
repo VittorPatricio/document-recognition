@@ -52,12 +52,14 @@ const DocumentSelectionScreen = ({
   const DocumentPreview = ({
     width,
     height,
+    type,
   }: {
     width: number;
     height: number;
+    type?: DocumentType;
   }) => {
     // Scale down the document for preview
-    const SCALE_FACTOR = 0.7;
+    const SCALE_FACTOR = type == 'A4' ? 0.32 : 0.68;
     const previewWidth = width * SCALE_FACTOR;
     const previewHeight = height * SCALE_FACTOR;
 
@@ -96,7 +98,11 @@ const DocumentSelectionScreen = ({
             key={option.type}
             style={styles.optionCard}
             onPress={() => onSelectDocument(option.type)}>
-            <DocumentPreview width={option.width} height={option.height} />
+            <DocumentPreview
+              type={option.type}
+              width={option.width}
+              height={option.height}
+            />
             <Text style={styles.optionTitle}>{option.title}</Text>
             <Text style={styles.optionDimensions}>{option.dimensions}</Text>
           </TouchableOpacity>
@@ -115,7 +121,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 20,
+    marginTop: 18,
     textAlign: 'center',
     color: '#333',
   },
@@ -123,6 +130,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   optionCard: {
     width: '48%',
@@ -131,11 +139,11 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     alignItems: 'center',
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: {width: 2, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   previewCanvas: {
     width: 100,
