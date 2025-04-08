@@ -66,12 +66,12 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         documentHeight = 65;
         break;
       case 'CPF':
-        documentWidth = 66;
-        documentHeight = 99;
+        documentWidth = 65;
+        documentHeight = 90;
         break;
       case 'CNH':
-        documentWidth = 85;
-        documentHeight = 60;
+        documentWidth = 55;
+        documentHeight = 75;
         break;
       default:
         documentWidth = 210;
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 35,
+    top: 30,
     left: 20,
     width: 40,
     height: 40,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   documentTypeContainer: {
     position: 'absolute',
-    top: 35,
+    top: 30,
     right: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,

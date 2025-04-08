@@ -45,8 +45,8 @@ const DocumentSelectionScreen = ({
       type: 'CNH',
       title: 'CNH',
       dimensions: '85 x 60 mm',
-      width: 85,
-      height: 60,
+      width: 60,
+      height: 85,
     },
   ];
 
