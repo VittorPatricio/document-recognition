@@ -62,8 +62,8 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         documentHeight = 297;
         break;
       case 'RG':
-        documentWidth = 96;
-        documentHeight = 65;
+        documentWidth = 65;
+        documentHeight = 90;
         break;
       case 'CPF':
         documentWidth = 65;

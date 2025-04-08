@@ -38,15 +38,15 @@ const DocumentSelectionScreen = ({
       type: 'CPF',
       title: 'CPF',
       dimensions: '66 x 99 mm',
-      width: 66,
-      height: 99,
+      width: 99,
+      height: 66,
     },
     {
       type: 'CNH',
       title: 'CNH',
       dimensions: '85 x 60 mm',
-      width: 60,
-      height: 85,
+      width: 85,
+      height: 60,
     },
   ];
 
