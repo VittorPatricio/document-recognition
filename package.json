@@ -10,9 +10,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-navigation/native": "^7.1.5",
+    "@react-navigation/native-stack": "^7.3.9",
     "@shopify/react-native-skia": "^1.12.3",
     "react": "18.3.1",
     "react-native": "^0.76.7",
+    "react-native-feather": "^1.1.2",
     "react-native-reanimated": "^3.17.2",
     "react-native-vision-camera": "^4.6.4",
     "react-native-worklets-core": "^1.5.0"
