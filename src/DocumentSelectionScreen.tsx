@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 24,
     textAlign: 'center',
+    color: '#333',
   },
   optionsContainer: {
     flexDirection: 'row',
