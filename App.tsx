@@ -1,15 +1,15 @@
-import {SafeAreaView, StatusBar, StyleSheet, Text} from 'react-native';
-import React, {useEffect} from 'react';
+import { SafeAreaView, StatusBar, StyleSheet, Text } from 'react-native';
+import React, { useEffect } from 'react';
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
 } from 'react-native-vision-camera';
-import {Canvas, Rect} from '@shopify/react-native-skia';
+import { Canvas, Rect } from '@shopify/react-native-skia';
 
 const App = () => {
   const device = useCameraDevice('back');
-  const {hasPermission, requestPermission} = useCameraPermission();
+  const { hasPermission, requestPermission } = useCameraPermission();
 
   useEffect(() => {
     requestPermission();
@@ -18,38 +18,36 @@ const App = () => {
   if (!hasPermission)
     return (
       <SafeAreaView
-        style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>No Permission</Text>
       </SafeAreaView>
     );
   if (!device)
     return (
       <SafeAreaView
-        style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>No Device</Text>
       </SafeAreaView>
     );
 
   const A4Rectangle = () => {
-    // Dimensões aproximadas de uma folha A4 em modo retrato (valores arbitrários para visualização)
-    const width = 210; // largura
-    const height = 297; // altura
+    // Dimensões aproximadas de uma folha A4 em modo retrato
+    const width = 210;
+    const height = 297;
 
-    // Offsets para posicionar o retângulo na tela (você pode ajustar conforme necessário)
-    const offsetX = 50;
-    const offsetY = 50;
+    // Ajuste para centralizar na tela
+    const offsetX = 100;
+    const offsetY = 150;
 
     return (
       <Canvas style={styles.canvas}>
-        {/* Retângulo com preenchimento azul claro */}
         <Rect
           x={offsetX}
           y={offsetY}
           width={width}
           height={height}
-          color="#B0E0E6" // azul claro
+          color="rgba(176, 224, 230, 0.5)" // azul claro com transparência
         />
-        {/* Retângulo para a borda com azul mais forte */}
         <Rect
           x={offsetX}
           y={offsetY}
@@ -63,8 +61,9 @@ const App = () => {
     );
   };
 
+
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{ flex: 1 }}>
       <StatusBar
         barStyle={'dark-content'}
         translucent={true}
