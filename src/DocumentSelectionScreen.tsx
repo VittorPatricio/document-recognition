@@ -4,6 +4,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import {Canvas, Rect} from '@shopify/react-native-skia';
 import type {DocumentType} from '../App';
@@ -91,29 +92,36 @@ const DocumentSelectionScreen = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Selecione o tipo de documento</Text>
-      <View style={styles.optionsContainer}>
-        {documentOptions.map(option => (
-          <TouchableOpacity
-            key={option.type}
-            style={styles.optionCard}
-            onPress={() => onSelectDocument(option.type)}>
-            <DocumentPreview
-              type={option.type}
-              width={option.width}
-              height={option.height}
-            />
-            <Text style={styles.optionTitle}>{option.title}</Text>
-            <Text style={styles.optionDimensions}>{option.dimensions}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollView}
+        showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Selecione o tipo de documento</Text>
+        <View style={styles.optionsContainer}>
+          {documentOptions.map(option => (
+            <TouchableOpacity
+              key={option.type}
+              style={styles.optionCard}
+              onPress={() => onSelectDocument(option.type)}>
+              <DocumentPreview
+                type={option.type}
+                width={option.width}
+                height={option.height}
+              />
+              <Text style={styles.optionTitle}>{option.title}</Text>
+              <Text style={styles.optionDimensions}>{option.dimensions}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
     padding: 16,
     backgroundColor: '#f5f5f5',
