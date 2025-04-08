@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 35,
     left: 20,
     width: 40,
     height: 40,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   documentTypeContainer: {
     position: 'absolute',
-    top: 50,
+    top: 35,
     right: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
