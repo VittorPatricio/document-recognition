@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useRef, useEffect} from 'react';
+import {useState, useRef, useEffect, useCallback} from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
+  Platform,
 } from 'react-native';
 import {
   Camera,
@@ -32,32 +33,213 @@ type CameraScreenProps = {
 const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
-  const cameraRef = useRef<Camera>(null);
+  const cameraRef = useRef<Camera | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(true);
+  const [isTakingPhoto, setIsTakingPhoto] = useState(false);
 
-  // 1) Solicita permissão assim que o componente monta
+  // Request camera permission on mount
   useEffect(() => {
-    (async () => {
+    const requestCameraPermission = async () => {
       await requestPermission();
-    })();
+    };
+    requestCameraPermission();
+
+    // Cleanup function to ensure camera is released
+    return () => {
+      setIsCameraActive(false);
+      cameraRef.current = null;
+    };
   }, [requestPermission]);
 
-  if (hasPermission === false) {
+  // Handle back button - ensure camera is deactivated
+  const handleBack = useCallback(() => {
+    setIsCameraActive(false);
+    setTimeout(() => {
+      onBack();
+    }, 300); // Give time for camera to fully release
+  }, [onBack]);
+
+  const takePhoto = useCallback(async () => {
+    if (!cameraRef.current || !isCameraActive || isTakingPhoto || isLoading) {
+      console.log(
+        'Cannot take photo: Camera not ready or already taking photo',
+      );
+      return;
+    }
+
+    try {
+      setIsTakingPhoto(true);
+      setError(null);
+
+      console.log('Taking photo...');
+      const photo = await cameraRef.current.takePhoto();
+
+      console.log('Photo taken successfully:', photo.path);
+
+      // Deactivate camera AFTER taking photo, not before
+      setIsCameraActive(false);
+
+      // Set photo URI with file:// prefix for proper display
+      const fullPhotoUri =
+        Platform.OS === 'ios' ? photo.path : `file://${photo.path}`;
+      setPhotoUri(fullPhotoUri);
+
+      // Process the photo
+      await processPhoto(photo.path);
+    } catch (err) {
+      console.error('Error taking photo:', err);
+      setError(
+        `Erro ao capturar foto: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      // Try to recover camera
+      setIsCameraActive(false);
+      setTimeout(() => {
+        setIsCameraActive(true);
+      }, 1000); // Increase timeout to 1000ms
+    } finally {
+      setIsTakingPhoto(false);
+    }
+  }, [isCameraActive, isTakingPhoto, isLoading]);
+
+  // Process and upload the photo
+  const processPhoto = async (photoPath: string) => {
+    try {
+      setIsLoading(true);
+      console.log('Processing photo:', photoPath);
+
+      // Try FormData approach first
+      await uploadWithFormData(photoPath);
+    } catch (err) {
+      console.error('Error processing photo:', err);
+      setError(
+        `Erro ao processar foto: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Upload using FormData
+  const uploadWithFormData = async (photoPath: string) => {
+    try {
+      console.log('Uploading with FormData...');
+
+      const fullPhotoUri =
+        Platform.OS === 'ios' ? photoPath : `file://${photoPath}`;
+
+      const formData = new FormData();
+      formData.append('documentType', documentType);
+      formData.append('file', {
+        uri: fullPhotoUri,
+        type: 'image/jpeg',
+        name: 'document.jpg',
+      } as any);
+
+      console.log('Sending request to API with document type:', documentType);
+
+      const response = await fetch(
+        'https://workflow.wpp.accesys.com.br/webhook-test/documento/analise',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Accept: 'application/json',
+          },
+          body: formData,
+        },
+      );
+
+      if (response.ok) {
+        const responseData = await response.json();
+        setApiResponse(responseData);
+        console.log('API Response:', responseData);
+      } else {
+        console.log('API Error Status:', response.status);
+        const errorText = await response.text();
+        console.log('API Error:', errorText);
+
+        // Try binary upload as fallback
+        await uploadBinary(photoPath);
+      }
+    } catch (err) {
+      console.error('FormData upload failed:', err);
+      // Try binary upload as fallback
+      await uploadBinary(photoPath);
+    }
+  };
+
+  // Upload using binary data
+  const uploadBinary = async (photoPath: string) => {
+    try {
+      console.log('Uploading with binary data...');
+
+      // Read file as binary
+      const imageBuffer = await RNFS.readFile(photoPath, 'base64');
+
+      // Convert base64 to binary
+      const binaryData = Buffer.from(imageBuffer, 'base64');
+
+      // Construct URL with query parameter
+      const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise?documentType=${documentType}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'image/jpeg',
+          Accept: 'application/json',
+        },
+        body: binaryData,
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        setApiResponse(responseData);
+        console.log('Binary API Response:', responseData);
+      } else {
+        const errorText = await response.text();
+        console.log('Binary API Error:', response.status, errorText);
+        setError(`Erro na API (${response.status}): ${errorText}`);
+      }
+    } catch (err) {
+      console.error('Binary upload failed:', err);
+      setError(
+        `Erro ao enviar dados binários: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  };
+
+  // Reset state to take another photo
+  const retakePhoto = useCallback(() => {
+    setPhotoUri(null);
+    setApiResponse(null);
+    setError(null);
+
+    // Delay camera activation to ensure previous instance is fully released
+    setTimeout(() => {
+      setIsCameraActive(true);
+    }, 1000);
+  }, []);
+
+  // Render loading screen
+  if (!device || hasPermission === false) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Text>Precisamos de permissão para usar a câmera</Text>
-      </SafeAreaView>
-    );
-  }
-  if (!device) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <Text>Dispositivo de câmera não encontrado.</Text>
+        <Text>
+          {!device
+            ? 'Dispositivo de câmera não encontrado.'
+            : 'Precisamos de permissão para usar a câmera'}
+        </Text>
       </SafeAreaView>
     );
   }
@@ -175,164 +357,50 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
     );
   };
 
-  // 3) Captura e envio
-  const takePhotoAndUpload = async () => {
-    if (!cameraRef.current || !isCameraActive) return;
-
-    try {
-      setError(null);
-
-      // Capture photo
-      const photo: PhotoFile = await cameraRef.current.takePhoto({
-        flash: 'off',
-      });
-
-      // Deactivate camera to prevent "already in use" error
-      setIsCameraActive(false);
-
-      // Set photo URI with file:// prefix for proper display
-      const fullPhotoUri = 'file://' + photo.path;
-      setPhotoUri(fullPhotoUri);
-      setIsLoading(true);
-
-      console.log('Photo captured:', fullPhotoUri);
-
-      // Method 1: Using FormData with binary file
-      const formData = new FormData();
-      formData.append('documentType', documentType);
-      formData.append('file', {
-        uri: fullPhotoUri,
-        type: 'image/jpeg',
-        name: 'document.jpg',
-      } as any);
-
-      console.log('Sending request to API...');
-      console.log('Document type:', documentType);
-
-      try {
-        // First attempt with FormData
-        const response = await fetch(
-          'https://workflow.wpp.accesys.com.br/webhook-test/documento/analise',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'multipart/form-data',
-              Accept: 'application/json',
-            },
-            body: formData,
-          },
-        );
-
-        if (response.ok) {
-          const responseData = await response.json();
-          setApiResponse(responseData);
-          console.log('API Response:', responseData);
-        } else {
-          console.log('API Error Status:', response.status);
-          const errorText = await response.text();
-          console.log('API Error:', errorText);
-
-          // If FormData approach fails, try with binary data
-          await sendBinaryData(photo.path, documentType);
-        }
-      } catch (formDataError) {
-        console.error('FormData approach failed:', formDataError);
-        // Fallback to binary approach
-        await sendBinaryData(photo.path, documentType);
-      }
-    } catch (err) {
-      console.error('Error capturing or uploading photo:', err);
-      setError(
-        'Erro ao capturar ou enviar a foto: ' +
-          (err instanceof Error ? err.message : String(err)),
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Binary data approach as fallback
-  const sendBinaryData = async (imagePath: string, docType: DocumentType) => {
-    try {
-      // Read file as binary
-      const imageBuffer = await RNFS.readFile(imagePath, 'base64');
-
-      // Convert base64 to binary
-      const binaryData = Buffer.from(imageBuffer, 'base64');
-
-      // Construct URL with query parameter
-      const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise?documentType=${docType}`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'image/jpeg',
-          Accept: 'application/json',
-        },
-        body: binaryData,
-      });
-
-      if (response.ok) {
-        const responseData = await response.json();
-        setApiResponse(responseData);
-        console.log('Binary API Response:', responseData);
-      } else {
-        const errorText = await response.text();
-        console.log('Binary API Error:', response.status, errorText);
-        setError(`Erro na API (${response.status}): ${errorText}`);
-      }
-    } catch (err) {
-      console.error('Binary upload failed:', err);
-      setError(
-        'Erro ao enviar dados binários: ' +
-          (err instanceof Error ? err.message : String(err)),
-      );
-    }
-  };
-
-  const retakePhoto = () => {
-    setPhotoUri(null);
-    setApiResponse(null);
-    setError(null);
-    // Re-activate camera
-    setIsCameraActive(true);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar hidden />
 
+      {/* Camera or Photo Preview */}
       {!photoUri ? (
         <>
-          {isCameraActive && (
+          {!photoUri && isCameraActive && (
             <Camera
               ref={cameraRef}
               style={StyleSheet.absoluteFill}
               device={device}
-              isActive={isCameraActive}
+              isActive={true}
               photo={true}
+              photoQualityBalance="speed"
             />
           )}
-          <DocumentFrame />
+          {isCameraActive && <DocumentFrame />}
         </>
       ) : (
         <Image source={{uri: photoUri}} style={styles.previewImage} />
       )}
 
-      {isLoading && (
+      {/* Loading Overlay */}
+      {(isLoading || isTakingPhoto) && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Processando documento...</Text>
+          <Text style={styles.loadingText}>
+            {isTakingPhoto ? 'Capturando foto...' : 'Processando documento...'}
+          </Text>
         </View>
       )}
 
-      {/* Botões de ação */}
+      {/* Action Buttons */}
       <View style={styles.buttonContainer}>
-        {!photoUri ? (
+        {!photoUri && !isTakingPhoto ? (
           <TouchableOpacity
-            style={styles.captureButtonLayer}
-            onPress={takePhotoAndUpload}
-            disabled={!isCameraActive || isLoading}>
+            style={[
+              styles.captureButtonLayer,
+              (!isCameraActive || isTakingPhoto || isLoading) &&
+                styles.disabledButton,
+            ]}
+            onPress={takePhoto}
+            disabled={!isCameraActive || isTakingPhoto || isLoading}>
             <View style={styles.captureButton} />
           </TouchableOpacity>
         ) : !isLoading && !apiResponse && !error ? (
@@ -344,18 +412,15 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         ) : null}
       </View>
 
-      {/* Botão Voltar */}
+      {/* Back Button */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => {
-          // Ensure camera is deactivated before navigating back
-          setIsCameraActive(false);
-          onBack();
-        }}>
+        onPress={handleBack}
+        disabled={isTakingPhoto || isLoading}>
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
 
-      {/* Document type indicator */}
+      {/* Document Type Indicator */}
       <View style={styles.documentTypeContainer}>
         <Text style={styles.documentTypeText}>
           {documentType === 'A4'
@@ -368,7 +433,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         </Text>
       </View>
 
-      {/* Mostrar resposta da API */}
+      {/* API Response Display */}
       {apiResponse && (
         <View style={styles.responseBox}>
           <Text style={styles.responseTitle}>Resposta da API:</Text>
@@ -383,7 +448,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         </View>
       )}
 
-      {/* Mostrar erro */}
+      {/* Error Display */}
       {error && (
         <View style={styles.errorBox}>
           <Text style={styles.errorTitle}>Erro:</Text>
@@ -440,6 +505,9 @@ const styles = StyleSheet.create({
     borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   photoActionButtons: {
     flexDirection: 'row',
