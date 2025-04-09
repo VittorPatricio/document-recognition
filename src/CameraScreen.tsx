@@ -34,7 +34,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   const device = useCameraDevice('back');
   const {hasPermission, requestPermission} = useCameraPermission();
   const cameraRef = useRef<Camera | null>(null);
-
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
@@ -42,19 +42,52 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   const [isCameraActive, setIsCameraActive] = useState(true);
   const [isTakingPhoto, setIsTakingPhoto] = useState(false);
 
-  // Request camera permission on mount
   useEffect(() => {
     const requestCameraPermission = async () => {
-      await requestPermission();
+      const granted = await requestPermission();
+      console.log('Camera permission granted:', granted);
     };
     requestCameraPermission();
 
-    // Cleanup function to ensure camera is released
+    // More thorough cleanup
     return () => {
+      console.log('Cleaning up camera resources...');
       setIsCameraActive(false);
+      setPhotoUri(null);
       cameraRef.current = null;
     };
   }, [requestPermission]);
+
+  // Add this useEffect for better camera initialization
+  useEffect(() => {
+    let mounted = true;
+
+    if (isCameraActive) {
+      // Atraso para garantir que recursos anteriores sejam liberados
+      const timer = setTimeout(() => {
+        if (mounted) {
+          console.log('Camera ready for use');
+          setIsCameraReady(true);
+        }
+      }, 500);
+
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+        setIsCameraReady(false);
+        console.log('Camera deactivated');
+      };
+    }
+  }, [isCameraActive]);
+
+  // Near the top of your component
+  useEffect(() => {
+    if (device) {
+      console.log('Camera device available:', device.id);
+    } else {
+      console.log('No camera device available');
+    }
+  }, [device]);
 
   // Handle back button - ensure camera is deactivated
   const handleBack = useCallback(() => {
@@ -64,10 +97,44 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
     }, 300); // Give time for camera to fully release
   }, [onBack]);
 
+  const recoverCamera = useCallback(() => {
+    console.log('Attempting to recover camera...');
+    // Desative a câmera completamente
+    setIsCameraActive(false);
+    setIsCameraReady(false);
+
+    // Limpe qualquer referência
+    cameraRef.current = null;
+
+    // Limpe outros estados que possam interferir
+    setPhotoUri(null);
+    setApiResponse(null);
+    setError(null);
+
+    // Espere mais tempo antes de reativar
+    setTimeout(() => {
+      console.log('Reactivating camera...');
+      setIsCameraActive(true);
+    }, 2000);
+  }, []);
+
   const takePhoto = useCallback(async () => {
-    if (!cameraRef.current || !isCameraActive || isTakingPhoto || isLoading) {
+    if (
+      !cameraRef.current ||
+      !isCameraActive ||
+      !isCameraReady ||
+      isTakingPhoto ||
+      isLoading
+    ) {
       console.log(
         'Cannot take photo: Camera not ready or already taking photo',
+        {
+          hasRef: !!cameraRef.current,
+          isActive: isCameraActive,
+          isReady: isCameraReady,
+          isTaking: isTakingPhoto,
+          isLoading: isLoading,
+        },
       );
       return;
     }
@@ -77,19 +144,22 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       setError(null);
 
       console.log('Taking photo...');
-      const photo = await cameraRef.current.takePhoto();
+      const photo = await cameraRef.current.takePhoto({
+        flash: 'off',
+      });
 
       console.log('Photo taken successfully:', photo.path);
 
-      // Deactivate camera AFTER taking photo, not before
+      // Desative a câmera DEPOIS de tirar a foto
       setIsCameraActive(false);
+      setIsCameraReady(false);
 
-      // Set photo URI with file:// prefix for proper display
+      // Configure o URI da foto com o prefixo file:// para exibição adequada
       const fullPhotoUri =
         Platform.OS === 'ios' ? photo.path : `file://${photo.path}`;
       setPhotoUri(fullPhotoUri);
 
-      // Process the photo
+      // Processe a foto
       await processPhoto(photo.path);
     } catch (err) {
       console.error('Error taking photo:', err);
@@ -98,15 +168,12 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
           err instanceof Error ? err.message : String(err)
         }`,
       );
-      // Try to recover camera
-      setIsCameraActive(false);
-      setTimeout(() => {
-        setIsCameraActive(true);
-      }, 1000); // Increase timeout to 1000ms
+      // Tente recuperar a câmera
+      recoverCamera();
     } finally {
       setIsTakingPhoto(false);
     }
-  }, [isCameraActive, isTakingPhoto, isLoading]);
+  }, [isCameraActive, isCameraReady, isTakingPhoto, isLoading, recoverCamera]);
 
   // Process and upload the photo
   const processPhoto = async (photoPath: string) => {
@@ -369,11 +436,28 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
               ref={cameraRef}
               style={StyleSheet.absoluteFill}
               device={device}
-              isActive={true}
+              isActive={isCameraActive} // Use a variável de estado diretamente
               photo={true}
               photoQualityBalance="speed"
+              onInitialized={() => {
+                console.log('Camera initialized successfully');
+                setIsCameraReady(true);
+              }}
+              onError={error => {
+                console.log('Camera error:', error);
+                // Se for um erro recuperável, tente reinicializar a câmera
+                if ((error.code as any) === 'session/recoverable-error') {
+                  recoverCamera();
+                } else if (error.code === 'device/camera-already-in-use') {
+                  console.log('Attempting to release camera resources...');
+                  setIsCameraActive(false);
+                  // Espere mais tempo antes de tentar novamente
+                  setTimeout(() => setIsCameraActive(true), 2000);
+                }
+              }}
             />
           )}
+
           {isCameraActive && <DocumentFrame />}
         </>
       ) : (
@@ -433,6 +517,18 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         </Text>
       </View>
 
+      {isCameraActive && !isCameraReady && (
+        <View style={styles.cameraLoadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Inicializando câmera...</Text>
+          <TouchableOpacity
+            style={styles.recoveryButton}
+            onPress={recoverCamera}>
+            <Text style={styles.recoveryButtonText}>Reiniciar câmera</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* API Response Display */}
       {apiResponse && (
         <View style={styles.responseBox}>
@@ -453,9 +549,16 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         <View style={styles.errorBox}>
           <Text style={styles.errorTitle}>Erro:</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={retakePhoto}>
-            <Text style={styles.closeButtonText}>Tentar novamente</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.closeButton} onPress={retakePhoto}>
+              <Text style={styles.closeButtonText}>Tentar novamente</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={recoverCamera}>
+              <Text style={styles.closeButtonText}>Recuperar câmera</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -514,6 +617,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     width: '80%',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 15,
+  },
+
   actionButton: {
     backgroundColor: '#4682B4',
     paddingVertical: 12,
@@ -522,6 +631,23 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   actionButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  cameraLoadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recoveryButton: {
+    backgroundColor: '#4682B4',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  recoveryButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
