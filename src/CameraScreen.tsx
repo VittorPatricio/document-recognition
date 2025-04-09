@@ -18,13 +18,11 @@ import {
   Camera,
   useCameraDevice,
   useCameraPermission,
-  type PhotoFile,
 } from 'react-native-vision-camera';
 import {Canvas, Rect} from '@shopify/react-native-skia';
 import RNFS from 'react-native-fs';
 import type {DocumentType} from '../App';
 import React from 'react';
-import {Buffer} from 'buffer';
 
 type CameraScreenProps = {
   documentType: DocumentType;
@@ -147,6 +145,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       console.log('Taking photo...');
       const photo = await cameraRef.current.takePhoto({
         flash: 'off',
+        enableShutterSound: true,
       });
 
       console.log('Photo taken successfully:', photo.path);
@@ -182,8 +181,8 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       setIsLoading(true);
       console.log('Processing photo:', photoPath);
 
-      // Try FormData approach first
-      await uploadWithFormData(photoPath);
+      // Use diretamente o upload binário, já que está funcionando melhor
+      await uploadBinary(photoPath);
     } catch (err) {
       console.error('Error processing photo:', err);
       setError(
@@ -193,55 +192,6 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       );
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Upload using FormData
-  const uploadWithFormData = async (photoPath: string) => {
-    try {
-      console.log('Uploading with FormData...');
-
-      const fullPhotoUri =
-        Platform.OS === 'ios' ? photoPath : `file://${photoPath}`;
-
-      const formData = new FormData();
-      formData.append('documentType', documentType);
-      formData.append('file', {
-        uri: fullPhotoUri,
-        type: 'image/jpeg', // Especifique explicitamente o tipo MIME
-        name: 'document.jpg',
-      } as any);
-
-      console.log('Sending request to API with document type:', documentType);
-
-      const response = await fetch(
-        'https://workflow.wpp.accesys.com.br/webhook-test/documento/analise',
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            // Não defina 'Content-Type' aqui, deixe que o fetch defina automaticamente com o boundary correto
-          },
-          body: formData,
-        },
-      );
-
-      if (response.ok) {
-        const responseData = await response.json();
-        setApiResponse(responseData);
-        console.log('API Response:', responseData);
-      } else {
-        console.log('API Error Status:', response.status);
-        const errorText = await response.text();
-        console.log('API Error:', errorText);
-
-        // Try binary upload as fallback
-        await uploadBinary(photoPath);
-      }
-    } catch (err) {
-      console.error('FormData upload failed:', err);
-      // Try binary upload as fallback
-      await uploadBinary(photoPath);
     }
   };
 
@@ -259,7 +209,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/octet-stream;base64',
+          'Content-Type': 'image/jpeg', // Tipo MIME correto para JPEG
           Accept: 'application/json',
         },
         body: base64Image,
