@@ -162,6 +162,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: '#666',
   },
   optionDimensions: {
     fontSize: 14,

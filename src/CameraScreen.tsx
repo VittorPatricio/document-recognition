@@ -24,6 +24,7 @@ import {Canvas, Rect} from '@shopify/react-native-skia';
 import RNFS from 'react-native-fs';
 import type {DocumentType} from '../App';
 import React from 'react';
+import {Buffer} from 'buffer';
 
 type CameraScreenProps = {
   documentType: DocumentType;
@@ -207,7 +208,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       formData.append('documentType', documentType);
       formData.append('file', {
         uri: fullPhotoUri,
-        type: 'image/jpeg',
+        type: 'image/jpeg', // Especifique explicitamente o tipo MIME
         name: 'document.jpg',
       } as any);
 
@@ -218,8 +219,8 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'multipart/form-data',
             Accept: 'application/json',
+            // Não defina 'Content-Type' aqui, deixe que o fetch defina automaticamente com o boundary correto
           },
           body: formData,
         },
@@ -249,11 +250,8 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
     try {
       console.log('Uploading with binary data...');
 
-      // Read file as binary
-      const imageBuffer = await RNFS.readFile(photoPath, 'base64');
-
-      // Convert base64 to binary
-      const binaryData = Buffer.from(imageBuffer, 'base64');
+      // Read file as base64
+      const base64Image = await RNFS.readFile(photoPath, 'base64');
 
       // Construct URL with query parameter
       const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise?documentType=${documentType}`;
@@ -261,10 +259,10 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'image/jpeg',
+          'Content-Type': 'application/octet-stream;base64',
           Accept: 'application/json',
         },
-        body: binaryData,
+        body: base64Image,
       });
 
       if (response.ok) {
