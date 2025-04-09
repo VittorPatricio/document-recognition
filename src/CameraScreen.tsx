@@ -196,29 +196,30 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
     }
   };
 
-  // Upload using binary data
-  // Substitua a função uploadBinary por esta versão:
   const uploadBinary = async (photoPath: string) => {
     try {
       console.log('Uploading with binary data...', photoPath);
 
-      // Ler o arquivo como binário puro (não como base64)
+      // Ler o arquivo como binário
       const imageData = await RNFS.readFile(photoPath, 'base64');
       // Converter base64 para blob/binary
       const imageBlob = Buffer.from(imageData, 'base64');
 
-      // Construir URL com parâmetro de consulta
-      const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise?documentType=${documentType}`;
+      // URL sem parâmetro de consulta
+      const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise`;
 
       console.log('Sending request to:', url);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'image/jpeg', // ou 'image/png' dependendo do formato da sua imagem
+          'Content-Type': 'image/jpeg',
           Accept: 'application/json',
+          'X-Document-Type': documentType,
+          'X-Timestamp': new Date().toISOString(),
+          'X-Device-Platform': Platform.OS,
         },
-        body: imageBlob, // Enviar o blob binário diretamente
+        body: imageBlob,
       });
 
       if (response.ok) {
