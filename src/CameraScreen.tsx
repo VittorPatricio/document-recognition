@@ -206,7 +206,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       const imageBlob = Buffer.from(imageData, 'base64');
 
       // URL sem parâmetro de consulta
-      const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise`;
+      const url = `https://workflow.wpp.accesys.com.br/webhook/documento/analise`;
 
       console.log('Sending request to:', url);
 
