@@ -11,7 +11,7 @@ import {
   View,
   ActivityIndicator,
   Image,
-  ScrollView, // Import ScrollView
+  ScrollView,
 } from 'react-native';
 import {
   Camera,
@@ -38,6 +38,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(true);
 
   // 1) Solicita permissão assim que o componente monta
   useEffect(() => {
@@ -176,7 +177,7 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
 
   // 3) Captura e envio
   const takePhotoAndUpload = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || !isCameraActive) return;
 
     try {
       setError(null);
@@ -186,17 +187,21 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         flash: 'off',
       });
 
-      setPhotoUri('file://' + photo.path);
+      // Deactivate camera to prevent "already in use" error
+      setIsCameraActive(false);
+
+      // Set photo URI with file:// prefix for proper display
+      const fullPhotoUri = 'file://' + photo.path;
+      setPhotoUri(fullPhotoUri);
       setIsLoading(true);
 
-      // Read the file as binary data
-      const imageData = await RNFS.readFile(photo.path, 'base64');
+      console.log('Photo captured:', fullPhotoUri);
 
       // Method 1: Using FormData with binary file
       const formData = new FormData();
       formData.append('documentType', documentType);
       formData.append('file', {
-        uri: 'file://' + photo.path,
+        uri: fullPhotoUri,
         type: 'image/jpeg',
         name: 'document.jpg',
       } as any);
@@ -289,6 +294,8 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
     setPhotoUri(null);
     setApiResponse(null);
     setError(null);
+    // Re-activate camera
+    setIsCameraActive(true);
   };
 
   return (
@@ -297,13 +304,15 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
 
       {!photoUri ? (
         <>
-          <Camera
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            device={device}
-            isActive={!photoUri}
-            photo={true}
-          />
+          {isCameraActive && (
+            <Camera
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              device={device}
+              isActive={isCameraActive}
+              photo={true}
+            />
+          )}
           <DocumentFrame />
         </>
       ) : (
@@ -322,7 +331,8 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
         {!photoUri ? (
           <TouchableOpacity
             style={styles.captureButtonLayer}
-            onPress={takePhotoAndUpload}>
+            onPress={takePhotoAndUpload}
+            disabled={!isCameraActive || isLoading}>
             <View style={styles.captureButton} />
           </TouchableOpacity>
         ) : !isLoading && !apiResponse && !error ? (
@@ -335,7 +345,13 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
       </View>
 
       {/* Botão Voltar */}
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          // Ensure camera is deactivated before navigating back
+          setIsCameraActive(false);
+          onBack();
+        }}>
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
 
@@ -404,7 +420,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: 'absolute',
-    bottom: 40,
+    bottom: '7.5%',
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -444,7 +460,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 24,
+    top: 21,
     left: 20,
     width: 40,
     height: 40,
@@ -458,11 +474,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginTop: -3,
+    marginTop: -8.25,
   },
   documentTypeContainer: {
     position: 'absolute',
-    top: 30,
+    top: 25,
     right: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
