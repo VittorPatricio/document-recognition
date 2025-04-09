@@ -23,6 +23,7 @@ import {Canvas, Rect} from '@shopify/react-native-skia';
 import RNFS from 'react-native-fs';
 import type {DocumentType} from '../App';
 import React from 'react';
+import {Buffer} from 'buffer';
 
 type CameraScreenProps = {
   documentType: DocumentType;
@@ -196,23 +197,28 @@ const CameraScreen = ({documentType, onBack}: CameraScreenProps) => {
   };
 
   // Upload using binary data
+  // Substitua a função uploadBinary por esta versão:
   const uploadBinary = async (photoPath: string) => {
     try {
-      console.log('Uploading with binary data...');
+      console.log('Uploading with binary data...', photoPath);
 
-      // Read file as base64
-      const base64Image = await RNFS.readFile(photoPath, 'base64');
+      // Ler o arquivo como binário puro (não como base64)
+      const imageData = await RNFS.readFile(photoPath, 'base64');
+      // Converter base64 para blob/binary
+      const imageBlob = Buffer.from(imageData, 'base64');
 
-      // Construct URL with query parameter
+      // Construir URL com parâmetro de consulta
       const url = `https://workflow.wpp.accesys.com.br/webhook-test/documento/analise?documentType=${documentType}`;
+
+      console.log('Sending request to:', url);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'image/jpeg', // Tipo MIME correto para JPEG
+          'Content-Type': 'image/jpeg', // ou 'image/png' dependendo do formato da sua imagem
           Accept: 'application/json',
         },
-        body: base64Image,
+        body: imageBlob, // Enviar o blob binário diretamente
       });
 
       if (response.ok) {
